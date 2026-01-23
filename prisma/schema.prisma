@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Source {
+  id          String      @id @default(cuid())
+  name        String      // "Raindrop" or "Readwise Reader"
+  type        String      // "raindrop" or "readwise"
+  isActive    Boolean     @default(true)
+  lastSyncAt  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  highlights  Highlight[]
+}
+
+model Highlight {
+  id              String            @id @default(cuid())
+  sourceId        String
+  source          Source            @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  externalId      String            // ID from the source API
+  text            String            // The highlighted text
+  note            String?           // User's note/annotation
+  title           String?           // Title of the article/book
+  author          String?           // Author of the source
+  url             String?           // URL to the original content
+  tags            String?           // Comma-separated tags
+  highlightedAt   DateTime          // When the highlight was made
+  importedAt      DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  reviewSchedules ReviewSchedule[]
+  testQuestions   TestQuestion[]
+
+  @@unique([sourceId, externalId])
+}
+
+model ReviewSchedule {
+  id            String    @id @default(cuid())
+  highlightId   String
+  highlight     Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
+  scheduledFor  DateTime  // When to review this highlight
+  interval      Int       @default(1) // Days between reviews
+  easeFactor    Float     @default(2.5) // SM-2 algorithm ease factor
+  repetitions   Int       @default(0) // Number of successful repetitions
+  lastReviewed  DateTime?
+  quality       Int?      // 0-5 quality rating from last review
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([scheduledFor])
+}
+
+model TestQuestion {
+  id          String    @id @default(cuid())
+  highlightId String
+  highlight   Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
+  question    String
+  answer      String
+  difficulty  String    @default("medium") // "easy", "medium", "hard"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Settings {
+  id                    String   @id @default(cuid())
+  notificationTime      String   @default("09:00") // Time in HH:mm format
+  notificationsEnabled  Boolean  @default(true)
+  dailyHighlightsCount  Int      @default(5)
+  timezone              String   @default("UTC")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
