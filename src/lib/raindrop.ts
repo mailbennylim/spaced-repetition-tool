@@ -3,15 +3,15 @@ import { z } from 'zod';
 const RaindropHighlightSchema = z.object({
   _id: z.number(),
   title: z.string(),
-  excerpt: z.string(),
-  note: z.string().optional(),
-  link: z.string().url(),
+  excerpt: z.string().optional().nullable(),
+  note: z.string().optional().nullable(),
+  link: z.string(),
   created: z.string(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional().default([]),
   collection: z.object({
     $id: z.number(),
     title: z.string(),
-  }).optional(),
+  }).optional().nullable(),
 });
 
 const RaindropResponseSchema = z.object({
