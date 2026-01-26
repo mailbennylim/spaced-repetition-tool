@@ -43,8 +43,16 @@ export class RaindropClient {
       }
 
       const data = await response.json();
-      const validated = RaindropResponseSchema.parse(data);
-      return validated.items;
+      console.log('Raw Raindrop API response:', JSON.stringify(data, null, 2));
+
+      try {
+        const validated = RaindropResponseSchema.parse(data);
+        return validated.items;
+      } catch (validationError) {
+        console.error('Raindrop validation error:', validationError);
+        console.error('Failed data:', JSON.stringify(data, null, 2));
+        throw validationError;
+      }
     } catch (error) {
       console.error('Error fetching Raindrop highlights:', error);
       throw error;
