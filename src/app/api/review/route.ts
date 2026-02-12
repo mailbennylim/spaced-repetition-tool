@@ -2,65 +2,104 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { calculateNextReview, getNextReviewDate } from '@/lib/spaced-repetition';
 
+// Helper: shuffle an array randomly
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Helper: randomly pick N items from an array
+function pickRandom<T>(arr: T[], n: number): T[] {
+  return shuffle(arr).slice(0, n);
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '5', 10);
-
     const now = new Date();
 
-    // Fetch all due reviews (more than we need so we can sort smartly)
-    const allDue = await prisma.reviewSchedule.findMany({
+    // ── SLOT A: 8 recall highlights ──────────────────────────────────────────
+
+    // Candidates: overdue OR never seen (repetitions = 0)
+    const slotACandidates = await prisma.reviewSchedule.findMany({
       where: {
-        scheduledFor: { lte: now },
         isCompleted: false,
+        OR: [
+          { scheduledFor: { lte: now } },
+          { repetitions: 0 },
+        ],
       },
-      include: {
-        highlight: { include: { source: true } },
-      },
+      include: { highlight: { include: { source: true } } },
     });
 
-    // Priority order for due items:
-    // 1. Never reviewed before (repetitions = 0) - brand new highlights first
-    // 2. Most overdue (scheduledFor furthest in the past)
-    // 3. Fewest repetitions (seen the least)
-    const sortedDue = allDue.sort((a, b) => {
-      // Never-seen items first
-      if (a.repetitions === 0 && b.repetitions !== 0) return -1;
-      if (b.repetitions === 0 && a.repetitions !== 0) return 1;
-      // Then most overdue
+    // Sort: most overdue first, ties broken by fewest repetitions
+    const sortedA = slotACandidates.sort((a, b) => {
       const overdueA = now.getTime() - a.scheduledFor.getTime();
       const overdueB = now.getTime() - b.scheduledFor.getTime();
       if (overdueB !== overdueA) return overdueB - overdueA;
-      // Then fewest repetitions
       return a.repetitions - b.repetitions;
     });
 
-    const picked = sortedDue.slice(0, limit);
+    // Cap pool at top 30, then randomly pick 8
+    const poolA = sortedA.slice(0, 30);
+    const slotA = pickRandom(poolA, 8);
+    const slotAIds = new Set(slotA.map(r => r.id));
+    const slotAHighlightIds = new Set(slotA.map(r => r.highlightId));
 
-    // Fill remaining slots from upcoming items (not yet due)
-    if (picked.length < limit) {
-      const existingIds = picked.map(r => r.id);
-      const upcoming = await prisma.reviewSchedule.findMany({
+    // ── SLOT B: 2 recent reinforcement highlights ─────────────────────────────
+
+    // Get the 10 most recently imported highlights
+    const recentHighlights = await prisma.highlight.findMany({
+      orderBy: { importedAt: 'desc' },
+      take: 10,
+      include: { source: true },
+    });
+
+    // Get their review schedules, excluding anything already in Slot A
+    const recentHighlightIds = recentHighlights
+      .map(h => h.id)
+      .filter(id => !slotAHighlightIds.has(id));
+
+    const slotBCandidates = await prisma.reviewSchedule.findMany({
+      where: {
+        highlightId: { in: recentHighlightIds.length > 0 ? recentHighlightIds : [''] },
+        isCompleted: false,
+      },
+      include: { highlight: { include: { source: true } } },
+    });
+
+    const slotB = pickRandom(slotBCandidates, 2);
+    const slotBIds = new Set(slotB.map(r => r.id));
+
+    // ── FILL GAPS ─────────────────────────────────────────────────────────────
+
+    const totalPicked = slotA.length + slotB.length;
+    const allPickedIds = new Set([...slotAIds, ...slotBIds]);
+    let filler: typeof slotA = [];
+
+    if (totalPicked < 10) {
+      filler = await prisma.reviewSchedule.findMany({
         where: {
-          id: { notIn: existingIds.length > 0 ? existingIds : [''] },
+          id: { notIn: [...allPickedIds] },
           isCompleted: false,
         },
-        include: {
-          highlight: { include: { source: true } },
-        },
-        // Prioritise unseen upcoming items, then soonest due
+        include: { highlight: { include: { source: true } } },
         orderBy: [
           { repetitions: 'asc' },
           { scheduledFor: 'asc' },
         ],
-        take: limit - picked.length,
+        take: 10 - totalPicked,
       });
-
-      return NextResponse.json([...picked, ...upcoming]);
     }
 
-    return NextResponse.json(picked);
+    // ── COMBINE AND SHUFFLE ───────────────────────────────────────────────────
+
+    const final = shuffle([...slotA, ...slotB, ...filler]);
+    return NextResponse.json(final);
+
   } catch (error) {
     console.error('Error fetching reviews:', error);
     return NextResponse.json(
