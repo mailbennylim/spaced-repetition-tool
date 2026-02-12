@@ -55,10 +55,10 @@ export async function POST(request: NextRequest) {
                 data: {
                   sourceId: raindropSource.id,
                   externalId: highlight._id.toString(),
-                  text: highlight.excerpt || highlight.title || 'No content',
+                  text: highlight.text,
                   note: highlight.note || undefined,
-                  title: highlight.title,
-                  url: highlight.link,
+                  title: highlight.raindropTitle || undefined,
+                  url: highlight.raindropLink || undefined,
                   tags: highlight.tags && highlight.tags.length > 0 ? highlight.tags.join(', ') : undefined,
                   highlightedAt: new Date(highlight.created),
                 },
