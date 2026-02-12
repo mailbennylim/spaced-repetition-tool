@@ -1,25 +1,13 @@
-import { z } from 'zod';
-
-const RaindropHighlightSchema = z.object({
-  _id: z.number(),
-  title: z.string(),
-  excerpt: z.string().optional().nullable(),
-  note: z.string().optional().nullable(),
-  link: z.string(),
-  created: z.string(),
-  tags: z.array(z.string()).optional().default([]),
-  collection: z.object({
-    $id: z.number(),
-    title: z.string(),
-  }).optional().nullable(),
-});
-
-const RaindropResponseSchema = z.object({
-  items: z.array(RaindropHighlightSchema),
-  count: z.number(),
-});
-
-export type RaindropHighlight = z.infer<typeof RaindropHighlightSchema>;
+export type RaindropHighlight = {
+  _id: number;
+  title: string;
+  excerpt: string | null;
+  note: string | null;
+  link: string;
+  created: string;
+  tags: string[];
+  collection: { $id: number; title: string } | null;
+};
 
 export class RaindropClient {
   private accessToken: string;
@@ -27,6 +15,20 @@ export class RaindropClient {
 
   constructor(accessToken: string) {
     this.accessToken = accessToken;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private mapItem(item: any): RaindropHighlight {
+    return {
+      _id: Number(item._id ?? item.id ?? 0),
+      title: String(item.title ?? ''),
+      excerpt: item.excerpt ? String(item.excerpt) : null,
+      note: item.note ? String(item.note) : null,
+      link: String(item.link ?? ''),
+      created: String(item.created ?? new Date().toISOString()),
+      tags: Array.isArray(item.tags) ? item.tags.map(String) : [],
+      collection: item.collection ?? null,
+    };
   }
 
   async fetchHighlights(limit = 50): Promise<RaindropHighlight[]> {
@@ -39,20 +41,18 @@ export class RaindropClient {
       });
 
       if (!response.ok) {
-        throw new Error(`Raindrop API error: ${response.statusText}`);
+        throw new Error(`Raindrop API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('Raw Raindrop API response:', JSON.stringify(data, null, 2));
+      console.log('Raindrop response - item count:', data?.items?.length ?? 0);
 
-      try {
-        const validated = RaindropResponseSchema.parse(data);
-        return validated.items;
-      } catch (validationError) {
-        console.error('Raindrop validation error:', validationError);
-        console.error('Failed data:', JSON.stringify(data, null, 2));
-        throw validationError;
+      if (!data || !Array.isArray(data.items)) {
+        console.error('Unexpected Raindrop format. Keys:', Object.keys(data ?? {}));
+        throw new Error('Unexpected response format from Raindrop API');
       }
+
+      return data.items.map((item: unknown) => this.mapItem(item));
     } catch (error) {
       console.error('Error fetching Raindrop highlights:', error);
       throw error;
@@ -76,8 +76,8 @@ export class RaindropClient {
       }
 
       const data = await response.json();
-      const validated = RaindropResponseSchema.parse(data);
-      return validated.items;
+      if (!data || !Array.isArray(data.items)) return [];
+      return data.items.map((item: unknown) => this.mapItem(item));
     } catch (error) {
       console.error('Error fetching Raindrop highlights:', error);
       throw error;
