@@ -9,28 +9,39 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
 
-    // Get highlights scheduled for review today or earlier
+    // First, get highlights that are actually due (scheduled for today or earlier)
     const dueReviews = await prisma.reviewSchedule.findMany({
       where: {
-        scheduledFor: {
-          lte: now,
-        },
+        scheduledFor: { lte: now },
         isCompleted: false,
       },
       include: {
-        highlight: {
-          include: {
-            source: true,
-          },
-        },
+        highlight: { include: { source: true } },
       },
-      orderBy: {
-        scheduledFor: 'asc',
-      },
+      orderBy: { scheduledFor: 'asc' },
       take: limit,
     });
 
-    return NextResponse.json(dueReviews);
+    // If we have enough due reviews, return them
+    if (dueReviews.length >= limit) {
+      return NextResponse.json(dueReviews);
+    }
+
+    // Otherwise, fill up to the limit with upcoming scheduled highlights
+    const existingIds = dueReviews.map(r => r.id);
+    const upcoming = await prisma.reviewSchedule.findMany({
+      where: {
+        id: { notIn: existingIds.length > 0 ? existingIds : [''] },
+        isCompleted: false,
+      },
+      include: {
+        highlight: { include: { source: true } },
+      },
+      orderBy: { scheduledFor: 'asc' },
+      take: limit - dueReviews.length,
+    });
+
+    return NextResponse.json([...dueReviews, ...upcoming]);
   } catch (error) {
     console.error('Error fetching reviews:', error);
     return NextResponse.json(
