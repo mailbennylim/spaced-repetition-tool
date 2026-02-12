@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
 
-    // First, get highlights that are actually due (scheduled for today or earlier)
-    const dueReviews = await prisma.reviewSchedule.findMany({
+    // Fetch all due reviews (more than we need so we can sort smartly)
+    const allDue = await prisma.reviewSchedule.findMany({
       where: {
         scheduledFor: { lte: now },
         isCompleted: false,
@@ -18,30 +18,49 @@ export async function GET(request: NextRequest) {
       include: {
         highlight: { include: { source: true } },
       },
-      orderBy: { scheduledFor: 'asc' },
-      take: limit,
     });
 
-    // If we have enough due reviews, return them
-    if (dueReviews.length >= limit) {
-      return NextResponse.json(dueReviews);
+    // Priority order for due items:
+    // 1. Never reviewed before (repetitions = 0) - brand new highlights first
+    // 2. Most overdue (scheduledFor furthest in the past)
+    // 3. Fewest repetitions (seen the least)
+    const sortedDue = allDue.sort((a, b) => {
+      // Never-seen items first
+      if (a.repetitions === 0 && b.repetitions !== 0) return -1;
+      if (b.repetitions === 0 && a.repetitions !== 0) return 1;
+      // Then most overdue
+      const overdueA = now.getTime() - a.scheduledFor.getTime();
+      const overdueB = now.getTime() - b.scheduledFor.getTime();
+      if (overdueB !== overdueA) return overdueB - overdueA;
+      // Then fewest repetitions
+      return a.repetitions - b.repetitions;
+    });
+
+    const picked = sortedDue.slice(0, limit);
+
+    // Fill remaining slots from upcoming items (not yet due)
+    if (picked.length < limit) {
+      const existingIds = picked.map(r => r.id);
+      const upcoming = await prisma.reviewSchedule.findMany({
+        where: {
+          id: { notIn: existingIds.length > 0 ? existingIds : [''] },
+          isCompleted: false,
+        },
+        include: {
+          highlight: { include: { source: true } },
+        },
+        // Prioritise unseen upcoming items, then soonest due
+        orderBy: [
+          { repetitions: 'asc' },
+          { scheduledFor: 'asc' },
+        ],
+        take: limit - picked.length,
+      });
+
+      return NextResponse.json([...picked, ...upcoming]);
     }
 
-    // Otherwise, fill up to the limit with upcoming scheduled highlights
-    const existingIds = dueReviews.map(r => r.id);
-    const upcoming = await prisma.reviewSchedule.findMany({
-      where: {
-        id: { notIn: existingIds.length > 0 ? existingIds : [''] },
-        isCompleted: false,
-      },
-      include: {
-        highlight: { include: { source: true } },
-      },
-      orderBy: { scheduledFor: 'asc' },
-      take: limit - dueReviews.length,
-    });
-
-    return NextResponse.json([...dueReviews, ...upcoming]);
+    return NextResponse.json(picked);
   } catch (error) {
     console.error('Error fetching reviews:', error);
     return NextResponse.json(
