@@ -168,13 +168,13 @@ export default function ReviewPage() {
 
           {/* Title */}
           {highlight.title && (
-            <h2 className="text-base text-gray-500 dark:text-gray-400 mb-8">{highlight.title}</h2>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-8">{highlight.title}</h2>
           )}
 
           {/* Highlight text */}
           <div className="mb-8">
-            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Highlight</p>
-            <p className="text-2xl font-medium leading-relaxed text-gray-900 dark:text-gray-100">{highlight.text}</p>
+            <p className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-3">Highlight</p>
+            <p className="text-lg font-medium leading-relaxed text-gray-900 dark:text-gray-100">{highlight.text}</p>
           </div>
 
           {/* Note */}
@@ -195,20 +195,20 @@ export default function ReviewPage() {
         </div>
 
         {/* Frequency buttons (small) */}
-        <div className="flex justify-center gap-3 mb-4">
+        <div className="flex justify-center gap-2 mb-4">
           <button
             onClick={() => adjustInterval(currentReview.id, 'more')}
             disabled={currentInterval <= MIN_INTERVAL}
-            className="px-4 py-2 rounded-full text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex-1 max-w-[180px] px-3 py-2 rounded-full text-xs font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Show more frequently
+            More frequently
           </button>
           <button
             onClick={() => adjustInterval(currentReview.id, 'less')}
             disabled={currentInterval >= MAX_INTERVAL}
-            className="px-4 py-2 rounded-full text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-orange-400 hover:text-orange-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex-1 max-w-[180px] px-3 py-2 rounded-full text-xs font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-orange-400 hover:text-orange-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Show less frequently
+            Less frequently
           </button>
         </div>
 
