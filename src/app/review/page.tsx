@@ -168,19 +168,20 @@ export default function ReviewPage() {
 
           {/* Title */}
           {highlight.title && (
-            <h2 className="text-xl font-bold mb-6 text-gray-800 dark:text-gray-200">{highlight.title}</h2>
+            <h2 className="text-base text-gray-500 dark:text-gray-400 mb-8">{highlight.title}</h2>
           )}
 
           {/* Highlight text */}
-          <div className="border-l-4 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-6 rounded-lg mb-6">
-            <p className="text-lg leading-relaxed text-gray-800 dark:text-gray-200">{highlight.text}</p>
+          <div className="mb-8">
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Highlight</p>
+            <p className="text-2xl font-medium leading-relaxed text-gray-900 dark:text-gray-100">{highlight.text}</p>
           </div>
 
           {/* Note */}
           {highlight.note && (
-            <div className="bg-gray-50 dark:bg-gray-900 p-5 rounded-xl mb-6">
-              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Your Note</p>
-              <p className="text-gray-700 dark:text-gray-300">{highlight.note}</p>
+            <div className="mb-6">
+              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Notes</p>
+              <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">{highlight.note}</p>
             </div>
           )}
 
