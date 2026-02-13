@@ -14,7 +14,7 @@
     "@prisma/client": "^5.14.0",
     "@tailwindcss/typography": "^0.5.19",
     "date-fns": "^3.6.0",
-    "next": "14.2.3",
+    "next": "^14.2.35",
     "node-cron": "^3.0.3",
     "openai": "^4.47.1",
     "react": "^18.3.1",
