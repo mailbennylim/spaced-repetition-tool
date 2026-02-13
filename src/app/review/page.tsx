@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 
 interface Highlight {
   id: string;
@@ -176,7 +177,7 @@ export default function ReviewPage() {
           <div className="mb-8">
             <p className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-3">Highlight</p>
             <div className="prose prose-base dark:prose-invert max-w-none text-gray-900 dark:text-gray-100 font-medium leading-relaxed">
-              <ReactMarkdown>{highlight.text}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkBreaks]}>{highlight.text}</ReactMarkdown>
             </div>
           </div>
 

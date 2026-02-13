@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 
 type Tab = 'write' | 'preview';
 
@@ -217,7 +218,7 @@ export default function AddHighlightPage() {
               <div className="min-h-[200px] px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                 {body.trim() ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{body}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkBreaks]}>{body}</ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-gray-400 text-sm italic">Nothing to preview yet.</p>
