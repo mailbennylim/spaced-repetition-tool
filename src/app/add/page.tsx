@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 
@@ -14,6 +14,69 @@ export default function AddHighlightPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Insert text at cursor position in textarea
+  function insertAtCursor(text: string) {
+    const el = textareaRef.current;
+    if (!el) {
+      setBody(prev => prev + text);
+      return;
+    }
+    const start = el.selectionStart ?? body.length;
+    const end = el.selectionEnd ?? body.length;
+    const prefix = body.slice(0, start);
+    const suffix = body.slice(end);
+    const newBody = prefix + text + suffix;
+    setBody(newBody);
+    // Restore cursor after inserted text
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + text.length, start + text.length);
+    });
+  }
+
+  async function uploadFile(file: File): Promise<string | null> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || 'Image upload failed');
+      return null;
+    }
+    const { url } = await res.json();
+    return url;
+  }
+
+  const handleImageUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    setError('');
+    try {
+      const url = await uploadFile(file);
+      if (url) insertAtCursor(`![image](${url})\n`);
+    } finally {
+      setUploading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [body]);
+
+  function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleImageUpload(file);
+    e.target.value = '';
+  }
+
+  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageFile = Array.from(e.clipboardData.items)
+      .find(item => item.type.startsWith('image/'))
+      ?.getAsFile();
+    if (!imageFile) return;
+    e.preventDefault();
+    await handleImageUpload(imageFile);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,10 +121,7 @@ export default function AddHighlightPage() {
         {saved && (
           <div className="mb-6 px-4 py-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl text-green-700 dark:text-green-300 text-sm">
             Highlight saved! It's now in your review queue.{' '}
-            <button
-              className="underline font-medium"
-              onClick={() => setSaved(false)}
-            >
+            <button className="underline font-medium" onClick={() => setSaved(false)}>
               Add another
             </button>
           </div>
@@ -121,12 +181,36 @@ export default function AddHighlightPage() {
               </div>
             </div>
 
+            {/* Image upload toolbar (only in write mode) */}
+            {tab === 'write' && (
+              <div className="flex items-center gap-2 mb-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileInputChange}
+                />
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  {uploading ? 'Uploading…' : '+ Image'}
+                </button>
+                <span className="text-xs text-gray-400">or paste an image with ⌘V</span>
+              </div>
+            )}
+
             {tab === 'write' ? (
               <textarea
+                ref={textareaRef}
                 value={body}
                 onChange={e => setBody(e.target.value)}
+                onPaste={handlePaste}
                 rows={10}
-                placeholder={`Write your highlight here.\n\nSupports:\n• Plain text\n• Images: ![description](https://image-url.com)\n• Tables:\n| Column 1 | Column 2 |\n|----------|----------|\n| Value    | Value    |`}
+                placeholder="Write your highlight here. Supports plain text, images, and tables."
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono resize-y"
               />
             ) : (
@@ -158,7 +242,7 @@ export default function AddHighlightPage() {
 
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || uploading}
             className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving…' : 'Save Highlight'}
