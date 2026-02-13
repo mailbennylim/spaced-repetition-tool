@@ -112,45 +112,33 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { reviewId, quality } = body;
+    const { reviewId, frequency } = body;
 
-    if (typeof quality !== 'number' || quality < 0 || quality > 5) {
-      return NextResponse.json(
-        { error: 'Quality must be a number between 0 and 5' },
-        { status: 400 }
-      );
-    }
+    // frequency: 'more' = 20 days, 'less' = 40 days, 'default' = 30 days
+    const intervalMap: Record<string, number> = {
+      more: 20,
+      less: 40,
+      default: 30,
+    };
+    const interval = intervalMap[frequency] ?? 30;
 
     const review = await prisma.reviewSchedule.findUnique({
       where: { id: reviewId },
     });
 
     if (!review) {
-      return NextResponse.json(
-        { error: 'Review not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Review not found' }, { status: 404 });
     }
 
-    const result = calculateNextReview(
-      quality,
-      review.interval,
-      review.repetitions,
-      review.easeFactor
-    );
-
-    const nextReviewDate = getNextReviewDate(result.interval);
+    const nextReviewDate = getNextReviewDate(interval);
 
     const updatedReview = await prisma.reviewSchedule.update({
       where: { id: reviewId },
       data: {
-        interval: result.interval,
-        repetitions: result.repetitions,
-        easeFactor: result.easeFactor,
+        interval,
+        repetitions: review.repetitions + 1,
         scheduledFor: nextReviewDate,
         lastReviewed: new Date(),
-        quality: quality,
-        isCompleted: quality >= 3, // Mark as completed if quality is good
       },
     });
 
