@@ -59,6 +59,17 @@ export default function Home() {
               </p>
             </div>
           </Link>
+
+          <Link href="/add" className="group">
+            <div className="p-8 rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:-translate-y-1">
+              <h2 className="text-2xl font-semibold mb-3 group-hover:text-blue-600 transition-colors">
+                Add Highlight
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Manually add a highlight for review
+              </p>
+            </div>
+          </Link>
         </div>
 
         <div className="text-center">
