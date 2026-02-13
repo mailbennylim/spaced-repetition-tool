@@ -17,6 +17,45 @@ function pickRandom<T>(arr: T[], n: number): T[] {
   return shuffle(arr).slice(0, n);
 }
 
+// Helper: spread items so no two adjacent items share the same article title.
+// Uses a greedy interleave: always place the item whose title differs from the last placed.
+type WithTitle = { highlight: { title?: string | null } };
+function spreadByTitle<T extends WithTitle>(arr: T[]): T[] {
+  if (arr.length <= 1) return arr;
+  // Group by title (null/undefined treated as unique per-item)
+  const groups = new Map<string, T[]>();
+  arr.forEach((item, i) => {
+    const key = item.highlight.title?.trim() || `__unique_${i}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
+  });
+
+  const result: T[] = [];
+  // Repeatedly pick from the largest group that doesn't match last placed title
+  const buckets = [...groups.entries()].map(([key, items]) => ({ key, items }));
+
+  while (result.length < arr.length) {
+    const lastKey = result.length > 0
+      ? (result[result.length - 1].highlight.title?.trim() || `__unique_${arr.indexOf(result[result.length - 1])}`)
+      : null;
+
+    // Find eligible buckets (different title from last, non-empty)
+    const eligible = buckets.filter(b => b.items.length > 0 && b.key !== lastKey);
+
+    if (eligible.length === 0) {
+      // Fallback: just take from any non-empty bucket
+      const any = buckets.find(b => b.items.length > 0);
+      if (!any) break;
+      result.push(any.items.shift()!);
+    } else {
+      // Pick from the largest eligible bucket (greedy)
+      eligible.sort((a, b) => b.items.length - a.items.length);
+      result.push(eligible[0].items.shift()!);
+    }
+  }
+  return result;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const now = new Date();
@@ -43,8 +82,16 @@ export async function GET(request: NextRequest) {
       return a.repetitions - b.repetitions;
     });
 
-    // Cap pool at top 30, then randomly pick 8
-    const poolA = sortedA.slice(0, 30);
+    // Cap pool at top 30, then limit to max 2 per article title, then randomly pick 8
+    const poolA30 = sortedA.slice(0, 30);
+    const titleCountA = new Map<string, number>();
+    const poolA = poolA30.filter(r => {
+      const title = r.highlight.title?.trim() || '';
+      const count = titleCountA.get(title) ?? 0;
+      if (count >= 2) return false;
+      titleCountA.set(title, count + 1);
+      return true;
+    });
     const slotA = pickRandom(poolA, 8);
     const slotAIds = new Set(slotA.map(r => r.id));
     const slotAHighlightIds = new Set(slotA.map(r => r.highlightId));
@@ -97,7 +144,8 @@ export async function GET(request: NextRequest) {
 
     // ── COMBINE AND SHUFFLE ───────────────────────────────────────────────────
 
-    const final = shuffle([...slotA, ...slotB, ...filler]);
+    const shuffled = shuffle([...slotA, ...slotB, ...filler]);
+    const final = spreadByTitle(shuffled);
     return NextResponse.json(final);
 
   } catch (error) {
