@@ -22,14 +22,17 @@ interface Review {
   highlight: Highlight;
 }
 
-type FrequencyChoice = 'more' | 'less' | 'default';
+const DEFAULT_INTERVAL = 30;
+const MIN_INTERVAL = 1;
+const MAX_INTERVAL = 365;
+const STEP = 10;
 
 export default function ReviewPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  // Track frequency choice per review card (by review id)
-  const [choices, setChoices] = useState<Record<string, FrequencyChoice>>({});
+  // Track the interval (days) per review card by review id
+  const [intervals, setIntervals] = useState<Record<string, number>>({});
 
   useEffect(() => { fetchReviews(); }, []);
 
@@ -45,15 +48,17 @@ export default function ReviewPage() {
     }
   }
 
-  function setChoice(reviewId: string, choice: FrequencyChoice) {
-    setChoices(prev => {
-      // Toggle off if clicking the same button again
-      if (prev[reviewId] === choice) {
-        const next = { ...prev };
-        delete next[reviewId];
-        return next;
-      }
-      return { ...prev, [reviewId]: choice };
+  function getInterval(reviewId: string): number {
+    return intervals[reviewId] ?? DEFAULT_INTERVAL;
+  }
+
+  function adjustInterval(reviewId: string, direction: 'more' | 'less') {
+    setIntervals(prev => {
+      const current = prev[reviewId] ?? DEFAULT_INTERVAL;
+      const next = direction === 'more'
+        ? Math.max(MIN_INTERVAL, current - STEP)
+        : Math.min(MAX_INTERVAL, current + STEP);
+      return { ...prev, [reviewId]: next };
     });
   }
 
@@ -61,13 +66,12 @@ export default function ReviewPage() {
     const current = reviews[currentIndex];
     if (!current) return;
 
-    // Submit frequency choice for current card
-    const choice = choices[current.id] ?? 'default';
+    const interval = getInterval(current.id);
     try {
       await fetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reviewId: current.id, frequency: choice }),
+        body: JSON.stringify({ reviewId: current.id, interval }),
       });
     } catch (error) {
       console.error('Failed to submit review:', error);
@@ -127,7 +131,7 @@ export default function ReviewPage() {
 
   const currentReview = reviews[currentIndex];
   const highlight = currentReview.highlight;
-  const currentChoice = choices[currentReview.id];
+  const currentInterval = getInterval(currentReview.id);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-black">
@@ -190,28 +194,36 @@ export default function ReviewPage() {
         </div>
 
         {/* Frequency buttons (small) */}
-        <div className="flex justify-center gap-3 mb-8">
+        <div className="flex justify-center gap-3 mb-4">
           <button
-            onClick={() => setChoice(currentReview.id, 'more')}
-            className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-              currentChoice === 'more'
-                ? 'bg-green-600 text-white border-green-600'
-                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-green-400 hover:text-green-600'
-            }`}
+            onClick={() => adjustInterval(currentReview.id, 'more')}
+            disabled={currentInterval <= MIN_INTERVAL}
+            className="px-4 py-2 rounded-full text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Show more frequently
           </button>
           <button
-            onClick={() => setChoice(currentReview.id, 'less')}
-            className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-              currentChoice === 'less'
-                ? 'bg-orange-500 text-white border-orange-500'
-                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-orange-400 hover:text-orange-500'
-            }`}
+            onClick={() => adjustInterval(currentReview.id, 'less')}
+            disabled={currentInterval >= MAX_INTERVAL}
+            className="px-4 py-2 rounded-full text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-orange-400 hover:text-orange-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Show less frequently
           </button>
         </div>
+
+        {/* Frequency hint */}
+        <p className={`text-center text-sm font-medium mb-6 ${
+          currentInterval < DEFAULT_INTERVAL
+            ? 'text-green-600 dark:text-green-400'
+            : currentInterval > DEFAULT_INTERVAL
+            ? 'text-orange-500 dark:text-orange-400'
+            : 'text-gray-400 dark:text-gray-600'
+        }`}>
+          Next review in <span className="font-bold">{currentInterval} day{currentInterval !== 1 ? 's' : ''}</span>
+          {currentInterval < DEFAULT_INTERVAL && ' · showing more often'}
+          {currentInterval > DEFAULT_INTERVAL && ' · showing less often'}
+          {currentInterval === DEFAULT_INTERVAL && ' · default'}
+        </p>
 
         {/* Next / Previous buttons (big) */}
         <div className="flex gap-4">
@@ -229,13 +241,6 @@ export default function ReviewPage() {
             {currentIndex === reviews.length - 1 ? 'Finish ✓' : 'Next →'}
           </button>
         </div>
-
-        {/* Frequency hint */}
-        <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-4">
-          {currentChoice === 'more' && 'Next review in 20 days'}
-          {currentChoice === 'less' && 'Next review in 40 days'}
-          {!currentChoice && 'Next review in 30 days (default)'}
-        </p>
 
       </div>
     </div>

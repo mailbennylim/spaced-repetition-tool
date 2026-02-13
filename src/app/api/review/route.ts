@@ -112,15 +112,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { reviewId, frequency } = body;
+    const { reviewId, interval: rawInterval } = body;
 
-    // frequency: 'more' = 20 days, 'less' = 40 days, 'default' = 30 days
-    const intervalMap: Record<string, number> = {
-      more: 20,
-      less: 40,
-      default: 30,
-    };
-    const interval = intervalMap[frequency] ?? 30;
+    // Clamp interval between 1 and 365 days, default 30
+    const interval = Math.min(365, Math.max(1, Number(rawInterval) || 30));
 
     const review = await prisma.reviewSchedule.findUnique({
       where: { id: reviewId },
