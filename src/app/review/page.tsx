@@ -195,20 +195,20 @@ export default function ReviewPage() {
         </div>
 
         {/* Frequency buttons (small) */}
-        <div className="flex justify-center gap-2 mb-4">
+        <div className="flex justify-center gap-3 mb-4">
           <button
             onClick={() => adjustInterval(currentReview.id, 'more')}
             disabled={currentInterval <= MIN_INTERVAL}
-            className="flex-1 max-w-[180px] px-3 py-2 rounded-full text-xs font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-full text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            More frequently
+            Show more frequently
           </button>
           <button
             onClick={() => adjustInterval(currentReview.id, 'less')}
             disabled={currentInterval >= MAX_INTERVAL}
-            className="flex-1 max-w-[180px] px-3 py-2 rounded-full text-xs font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-orange-400 hover:text-orange-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-full text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-orange-400 hover:text-orange-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Less frequently
+            Show less frequently
           </button>
         </div>
 
@@ -226,18 +226,18 @@ export default function ReviewPage() {
           {currentInterval === DEFAULT_INTERVAL && ' · default'}
         </p>
 
-        {/* Next / Previous buttons (big) */}
-        <div className="flex gap-4">
+        {/* Next / Previous buttons */}
+        <div className="flex gap-3">
           <button
             onClick={() => submitAndNavigate('prev')}
             disabled={currentIndex === 0}
-            className="flex-1 py-4 rounded-2xl text-lg font-semibold border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex-1 py-3 rounded-xl text-sm font-semibold border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
           >
-            ← Previous
+            ← Prev
           </button>
           <button
             onClick={() => submitAndNavigate('next')}
-            className="flex-2 flex-grow-[2] py-4 rounded-2xl text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-all"
+            className="flex-[2] py-3 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-all whitespace-nowrap"
           >
             {currentIndex === reviews.length - 1 ? 'Finish ✓' : 'Next →'}
           </button>
