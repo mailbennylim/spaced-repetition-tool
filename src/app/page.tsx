@@ -10,6 +10,7 @@ interface ReadingItem {
   author: string | null;
   type: string;
   filePath: string | null;
+  coverImage: string | null;
   ogImage: string | null;
   readingProgress: string | null;
   createdAt: string;
@@ -171,8 +172,8 @@ export default function Home() {
               <Link key={item.id} href={`/read/${item.id}`} className="group relative">
                 {/* Cover */}
                 <div className="relative aspect-[2/3] rounded-xl overflow-hidden mb-2 shadow-sm group-hover:shadow-md transition-shadow">
-                  {item.type === 'article' && item.ogImage ? (
-                    <img src={item.ogImage} alt={item.title} loading="lazy"
+                  {item.coverImage || item.ogImage ? (
+                    <img src={item.coverImage || item.ogImage || ''} alt={item.title} loading="lazy"
                       className="w-full h-full object-cover"
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />

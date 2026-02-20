@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { extractArticle } from '@/lib/article-extract';
+import { extractEpubCover } from '@/lib/cover-extract';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 
@@ -41,11 +42,18 @@ export async function POST(request: NextRequest) {
       const filepath = path.join(uploadsDir, filename);
       await writeFile(filepath, Buffer.from(await file.arrayBuffer()));
 
+      // Extract cover for EPUBs
+      let coverImage: string | null = null;
+      if (ext === 'epub') {
+        coverImage = await extractEpubCover(`/uploads/${filename}`);
+      }
+
       const item = await prisma.readingItem.create({
         data: {
           title: title || file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' '),
           type: ext as string,
           filePath: `/uploads/${filename}`,
+          coverImage,
         },
         include: { _count: { select: { readingHighlights: true } } },
       });
