@@ -53,6 +53,22 @@ export default function EpubReader({
     });
   }, [highlights, deleteHighlight]);
 
+  // Keyboard navigation — listen on the parent window
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!renditionRef.current) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        renditionRef.current.next();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        renditionRef.current.prev();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
+
   const handleSaveHighlight = async () => {
     if (!selected || !renditionRef.current) return;
     setSaving(true);
@@ -122,6 +138,12 @@ export default function EpubReader({
             renditionRef.current = rendition;
             rendition.themes.fontSize(`${fontSize}%`);
             applyHighlights(rendition);
+
+            // Forward keyboard events from inside the iframe to the parent window
+            rendition.on('keydown', (e: KeyboardEvent) => {
+              window.dispatchEvent(new KeyboardEvent('keydown', { key: e.key, bubbles: true }));
+            });
+
             rendition.on('selected', (cfiRange: string) => {
               const selection = rendition.getContents()[0]?.window?.getSelection();
               const text = selection?.toString().trim() || '';
@@ -129,6 +151,20 @@ export default function EpubReader({
             });
           }}
         />
+      </div>
+
+      {/* Prev / Next buttons */}
+      <div className="shrink-0 flex items-center justify-between px-6 py-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => renditionRef.current?.prev()}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
+          ← Previous
+        </button>
+        <button
+          onClick={() => renditionRef.current?.next()}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
+          Next →
+        </button>
       </div>
 
       {/* Highlight button */}
