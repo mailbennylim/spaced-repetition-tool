@@ -18,9 +18,9 @@ interface ReadingItem {
 
 const TYPE_LABELS: Record<string, string> = { epub: 'EPUB', pdf: 'PDF', article: 'Article' };
 const TYPE_COLORS: Record<string, string> = {
-  epub: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-  pdf: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  article: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  epub: 'bg-black text-white',
+  pdf: 'bg-black text-white',
+  article: 'bg-black text-white',
 };
 const TYPE_GRADIENTS: Record<string, string> = {
   epub: 'from-gray-200 to-gray-400',
@@ -177,8 +177,7 @@ export default function Home() {
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   ) : (
-                    <div className={`w-full h-full bg-gradient-to-br ${TYPE_GRADIENTS[item.type] || 'from-gray-400 to-gray-600'} flex items-end p-3`}>
-                      <p className="text-white text-xs font-medium line-clamp-3 leading-snug">{item.title}</p>
+                    <div className={`w-full h-full bg-gradient-to-br ${TYPE_GRADIENTS[item.type] || 'from-gray-400 to-gray-600'}`}>
                     </div>
                   )}
                   {/* Type badge */}
