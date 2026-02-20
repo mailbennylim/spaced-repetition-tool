@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
           type: ext as string,
           filePath: `/uploads/${filename}`,
         },
+        include: { _count: { select: { readingHighlights: true } } },
       });
       return NextResponse.json(item, { status: 201 });
     }
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
         content: article.content,
         ogImage: article.ogImage,
       },
+      include: { _count: { select: { readingHighlights: true } } },
     });
     return NextResponse.json(item, { status: 201 });
 

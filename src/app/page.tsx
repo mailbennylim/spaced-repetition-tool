@@ -186,7 +186,7 @@ export default function Home() {
                     {TYPE_LABELS[item.type]}
                   </span>
                   {/* Highlight count */}
-                  {item._count.readingHighlights > 0 && (
+                  {(item._count?.readingHighlights ?? 0) > 0 && (
                     <span className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-400/90 text-yellow-900">
                       {item._count.readingHighlights}✦
                     </span>
