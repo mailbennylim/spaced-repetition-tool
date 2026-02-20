@@ -27,18 +27,7 @@ export default function Home() {
             </div>
           </Link>
 
-          <Link href="/test" className="group">
-            <div className="p-8 rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:-translate-y-1">
-              <h2 className="text-2xl font-semibold mb-3 group-hover:text-purple-600 transition-colors">
-                Test Mode
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                Test your recall with generated questions
-              </p>
-            </div>
-          </Link>
-
-          <Link href="/highlights" className="group">
+<Link href="/highlights" className="group">
             <div className="p-8 rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:-translate-y-1">
               <h2 className="text-2xl font-semibold mb-3 group-hover:text-green-600 transition-colors">
                 All Highlights
