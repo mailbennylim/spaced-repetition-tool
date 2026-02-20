@@ -23,8 +23,8 @@ const TYPE_COLORS: Record<string, string> = {
   article: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
 };
 const TYPE_GRADIENTS: Record<string, string> = {
-  epub: 'from-purple-400 to-indigo-600',
-  pdf: 'from-red-400 to-rose-600',
+  epub: 'from-gray-200 to-gray-400',
+  pdf: 'from-gray-200 to-gray-400',
   article: 'from-blue-400 to-cyan-600',
 };
 
