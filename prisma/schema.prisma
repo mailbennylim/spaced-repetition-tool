@@ -70,6 +70,35 @@ model TestQuestion {
   updatedAt   DateTime  @updatedAt
 }
 
+model ReadingItem {
+  id               String             @id @default(cuid())
+  title            String
+  author           String?
+  type             String             // 'epub' | 'pdf' | 'article'
+  filePath         String?            // local path for epub/pdf
+  url              String?            // source URL
+  content          String?            // extracted HTML for articles
+  coverImage       String?            // path to cover image
+  ogImage          String?            // open graph image URL for articles
+  readingProgress  String?            // JSON: position data
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  readingHighlights ReadingHighlight[]
+}
+
+model ReadingHighlight {
+  id            String      @id @default(cuid())
+  readingItemId String
+  readingItem   ReadingItem @relation(fields: [readingItemId], references: [id], onDelete: Cascade)
+  text          String?     // highlighted text
+  imageUrl      String?     // for image highlights
+  type          String      // 'text' | 'image'
+  position      String      // JSON: {startOffset, endOffset} for article | {cfi} for epub | {page} for pdf
+  color         String      @default("yellow")
+  note          String?
+  createdAt     DateTime    @default(now())
+}
+
 model Settings {
   id                    String   @id @default(cuid())
   notificationTime      String   @default("09:00") // Time in HH:mm format
