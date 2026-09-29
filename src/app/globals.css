@@ -2,26 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark mode only (docs/ux-spec.md D13) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --tabbar-h: 60px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  background: #0d1116;
+  color: #e0e3e6;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
 
+::selection { background: rgba(70, 147, 254, .28); }
+
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  .text-balance { text-wrap: balance; }
+  .pb-safe { padding-bottom: var(--safe-bottom); }
+  .pt-safe { padding-top: var(--safe-top); }
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .smallcaps { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
 }
+
+/* Highlight colours (docs/ux-spec.md §3.6): tint + 2px underline in the same hue */
+.hl { cursor: pointer; color: #fff; border-radius: 2px;
+  background-image: linear-gradient(0deg, hsl(var(--hl-h) 100% 50% / 80%) 0, hsl(var(--hl-h) 100% 50% / 80%) 2px, hsl(var(--hl-h) 100% 50% / 15%) 2px, hsl(var(--hl-h) 100% 50% / 15%) 100%); }
+.hl.hl-active { background-image: linear-gradient(0deg, hsl(var(--hl-h) 100% 50% / 80%) 0, hsl(var(--hl-h) 100% 50% / 80%) 2px, hsl(var(--hl-h) 100% 50% / 30%) 2px, hsl(var(--hl-h) 100% 50% / 30%) 100%); }
+.hl-yellow { --hl-h: 50; }
+.hl-green  { --hl-h: 140; }
+.hl-blue   { --hl-h: 210; }
+.hl-pink   { --hl-h: 330; }
+.hl-purple { --hl-h: 270; }
+
+/* Reading body */
+.reader-prose { font-family: var(--font-serif), "Source Serif 4", Georgia, serif; color: #c1c7ce; }
+.reader-prose h1, .reader-prose h2, .reader-prose h3, .reader-prose h4 { color: #f0f1f2; font-weight: 700; line-height: 1.25; margin: 1.4em 0 .5em; }
+.reader-prose h2 { font-size: 1.2em; } .reader-prose h3 { font-size: 1.05em; }
+.reader-prose p { margin: 0 0 1em; }
+.reader-prose a { color: #b9a8f5; text-decoration: underline; text-underline-offset: 3px; }
+.reader-prose img { max-width: 100%; height: auto; border-radius: 6px; margin: 1em auto; }
+.reader-prose blockquote { border-left: 3px solid #313942; padding-left: 1em; color: #959faa; margin: 1em 0; }
+.reader-prose pre, .reader-prose code { font-family: ui-monospace, "Roboto Mono", monospace; font-size: .8em; background: #161c22; border-radius: 4px; }
+.reader-prose pre { padding: .8em 1em; overflow-x: auto; }
+.reader-prose code { padding: .1em .3em; }
+.reader-prose ul, .reader-prose ol { padding-left: 1.3em; margin: 0 0 1em; }
+.reader-prose ul { list-style: disc; } .reader-prose ol { list-style: decimal; }
+.reader-prose li { margin: .3em 0; }
+.reader-prose figure figcaption { font-size: .75em; color: #959faa; text-align: center; }
+.reader-prose table { width: 100%; border-collapse: collapse; font-size: .8em; }
+.reader-prose td, .reader-prose th { border: 1px solid #282e35; padding: .4em .6em; }
+.reader-prose hr { border: 0; border-top: 1px solid #282e35; margin: 2em 0; }
+
+/* Listen: paragraph tint (docs/ux-spec.md §3.12). ::highlight() rules live in RuntimeStyles.tsx (Turbopack rejects them). */
+.tts-para { background: rgba(70, 147, 254, .07); border-radius: 6px; }
+
+/* Reader link colour + focus outline reset inside content */
+.reader-prose :focus { outline: none; }
+
+/* PDF highlight boxes */
+.pdf-hl { position: absolute; pointer-events: auto; border-radius: 2px;
+  background: hsl(var(--hl-h) 100% 50% / 22%); border-bottom: 2px solid hsl(var(--hl-h) 100% 50% / 80%); }
+.pdf-hl.hl-active { background: hsl(var(--hl-h) 100% 50% / 38%); }
+.react-pdf__Page__textContent ::selection { background: rgba(70,147,254,.35); }
+.react-pdf__Page { background: #fff; }

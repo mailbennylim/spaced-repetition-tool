@@ -1,0 +1,12 @@
+# Cloudflare Tunnel config (docs/build-plan.md Phase 7).
+# 1. brew install cloudflared
+# 2. cloudflared tunnel login  →  cloudflared tunnel create reader
+# 3. Put this file at ~/.cloudflared/config.yml, replacing <TUNNEL-ID> and your domain
+# 4. cloudflared tunnel route dns reader reader.YOURDOMAIN.com
+# 5. sudo cloudflared service install   (runs at boot)
+tunnel: <TUNNEL-ID>
+credentials-file: /Users/benny/.cloudflared/<TUNNEL-ID>.json
+ingress:
+  - hostname: reader.YOURDOMAIN.com
+    service: http://localhost:3000
+  - service: http_status:404

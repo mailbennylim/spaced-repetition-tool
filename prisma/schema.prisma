@@ -10,10 +10,98 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── Reading ────────────────────────────────────────────────────────────────
+
+model Document {
+  id           String        @id @default(cuid())
+  title        String
+  author       String?
+  type         String        // 'article' | 'epub' | 'pdf' | 'email' | 'rss'
+  url          String?       // original URL
+  domain       String?       // e.g. "inma.org"
+  siteName     String?
+  excerpt      String?       // description / first sentences
+  content      String?       // cleaned HTML (articles, emails, rss)
+  filePath     String?       // /uploads/... for epub / pdf
+  coverImage   String?       // local cover (epub / pdf)
+  imageUrl     String?       // og:image for articles
+  wordCount    Int?
+  publishedAt  DateTime?
+
+  // Where it lives. Library documents: 'inbox' | 'archive'. Feed documents have isFeed = true.
+  location     String        @default("inbox")
+  isFeed       Boolean       @default(false)
+  seen         Boolean       @default(false)
+  feedId       String?
+  feed         Feed?         @relation(fields: [feedId], references: [id], onDelete: SetNull)
+
+  progress     Float         @default(0)  // furthest point read, 0–1
+  position     String?       // JSON: last location (scroll %, cfi, page)
+  lastOpenedAt DateTime?
+  note         String?       // document note
+  savedUsing   String?       // 'app' | 'share' | 'bookmarklet' | 'email' | 'rss' | 'import'
+
+  savedAt      DateTime      @default(now())
+  movedAt      DateTime      @default(now())
+  deletedAt    DateTime?     // set = in Trash
+  updatedAt    DateTime      @updatedAt
+
+  tags         DocumentTag[]
+  highlights   Highlight[]
+
+  @@index([isFeed, location, deletedAt])
+  @@index([url])
+}
+
+model Tag {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  createdAt DateTime      @default(now())
+  documents DocumentTag[]
+}
+
+model DocumentTag {
+  documentId String
+  tagId      String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([documentId, tagId])
+}
+
+model Feed {
+  id            String      @id @default(cuid())
+  kind          String      @default("rss") // 'rss' | 'newsletter'
+  title         String
+  url           String      @unique        // feed URL (rss) or sender address (newsletter)
+  siteUrl       String?
+  iconUrl       String?
+  description   String?
+  folderId      String?
+  folder        FeedFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  etag          String?
+  lastModified  String?
+  lastFetchedAt DateTime?
+  lastItemAt    DateTime?
+  lastError     String?
+  createdAt     DateTime    @default(now())
+  documents     Document[]
+}
+
+model FeedFolder {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  feeds     Feed[]
+}
+
+// ── Highlights & review ───────────────────────────────────────────────────
+
 model Source {
   id          String      @id @default(cuid())
-  name        String      // "Raindrop" or "Readwise Reader"
-  type        String      // "raindrop" or "readwise"
+  name        String      // "Raindrop", "Readwise", "Manual"
+  type        String      // "raindrop" | "readwise" | "manual"
   isActive    Boolean     @default(true)
   lastSyncAt  DateTime?
   createdAt   DateTime    @default(now())
@@ -25,21 +113,27 @@ model Highlight {
   id              String            @id @default(cuid())
   sourceId        String
   source          Source            @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  externalId      String            // ID from the source API
-  text            String            // The highlighted text
-  note            String?           // User's note/annotation
-  title           String?           // Title of the article/book
-  author          String?           // Author of the source
-  url             String?           // URL to the original content
-  tags            String?           // Comma-separated tags
-  highlightedAt   DateTime          // When the highlight was made
+  externalId      String            // ID from the source (or our own id for in-app highlights)
+  documentId      String?           // set for highlights made in the app
+  document        Document?         @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  kind            String            @default("text") // 'text' | 'image'
+  text            String            // the highlighted text ('' for image highlights)
+  imageUrl        String?
+  note            String?
+  color           String            @default("yellow") // yellow | green | blue | pink | purple
+  position        String?           // JSON: {start,end} (article) | {cfi} (epub) | {page,rects} (pdf)
+  title           String?           // denormalised source title (imported highlights)
+  author          String?
+  url             String?
+  tags            String?           // comma-separated, read-only (imported)
+  highlightedAt   DateTime
   importedAt      DateTime          @default(now())
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   reviewSchedules ReviewSchedule[]
-  testQuestions   TestQuestion[]
 
   @@unique([sourceId, externalId])
+  @@index([documentId])
 }
 
 model ReviewSchedule {
@@ -48,10 +142,10 @@ model ReviewSchedule {
   highlight     Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
   scheduledFor  DateTime  // When to review this highlight
   interval      Int       @default(1) // Days between reviews
-  easeFactor    Float     @default(2.5) // SM-2 algorithm ease factor
-  repetitions   Int       @default(0) // Number of successful repetitions
+  easeFactor    Float     @default(2.5)
+  repetitions   Int       @default(0)
   lastReviewed  DateTime?
-  quality       Int?      // 0-5 quality rating from last review
+  quality       Int?
   isCompleted   Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -59,52 +153,35 @@ model ReviewSchedule {
   @@index([scheduledFor])
 }
 
-model TestQuestion {
-  id          String    @id @default(cuid())
-  highlightId String
-  highlight   Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
-  question    String
-  answer      String
-  difficulty  String    @default("medium") // "easy", "medium", "hard"
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model SavedView {
+  id        String   @id @default(cuid())
+  name      String
+  query     String
+  pinned    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
-model ReadingItem {
-  id               String             @id @default(cuid())
-  title            String
-  author           String?
-  type             String             // 'epub' | 'pdf' | 'article'
-  filePath         String?            // local path for epub/pdf
-  url              String?            // source URL
-  content          String?            // extracted HTML for articles
-  coverImage       String?            // path to cover image
-  ogImage          String?            // open graph image URL for articles
-  readingProgress  String?            // JSON: position data
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  readingHighlights ReadingHighlight[]
-}
-
-model ReadingHighlight {
-  id            String      @id @default(cuid())
-  readingItemId String
-  readingItem   ReadingItem @relation(fields: [readingItemId], references: [id], onDelete: Cascade)
-  text          String?     // highlighted text
-  imageUrl      String?     // for image highlights
-  type          String      // 'text' | 'image'
-  position      String      // JSON: {startOffset, endOffset} for article | {cfi} for epub | {page} for pdf
-  color         String      @default("yellow")
-  note          String?
-  createdAt     DateTime    @default(now())
-}
+// ── Settings ──────────────────────────────────────────────────────────────
 
 model Settings {
   id                    String   @id @default(cuid())
-  notificationTime      String   @default("09:00") // Time in HH:mm format
+  notificationTime      String   @default("09:00")
   notificationsEnabled  Boolean  @default(true)
-  dailyHighlightsCount  Int      @default(5)
+  dailyHighlightsCount  Int      @default(10)
   timezone              String   @default("UTC")
+  homeRows              String?  // JSON: ordered list of visible Home rows
+  autoAdvance           Boolean  @default(false)
+  autoHighlight         Boolean  @default(false)
+  defaultColor          String   @default("yellow")
+  readerFont            String   @default("serif")
+  readerFontSize        Int      @default(20)
+  readerLineHeight      Float    @default(1.4)
+  readerLineWidth       String   @default("medium")
+  ttsVoice              String?
+  ttsRate               Float    @default(1)
+  libraryEmailToken     String?
+  feedEmailToken        String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

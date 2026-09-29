@@ -1,22 +1,33 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next';
+import { Inter, Source_Serif_4 } from 'next/font/google';
+import { ToastProvider } from '@/components/ui/Toast';
+import RuntimeStyles from '@/components/ui/RuntimeStyles';
+import './globals.css';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const serif = Source_Serif_4({ subsets: ['latin'], variable: '--font-serif', style: ['normal', 'italic'] });
 
 export const metadata: Metadata = {
-  title: "Spaced Repetition Tool",
-  description: "Reinforce knowledge through spaced repetition of your reading highlights",
+  title: 'Reader',
+  description: 'Read, highlight and remember',
+  applicationName: 'Reader',
+  appleWebApp: { capable: true, title: 'Reader', statusBarStyle: 'black-translucent' },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  themeColor: '#0d1116',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className={`dark ${inter.variable} ${serif.variable}`}>
+      <body className="font-sans bg-bg text-ink-ui antialiased">
+        <RuntimeStyles />
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }

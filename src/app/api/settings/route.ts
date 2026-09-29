@@ -1,65 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+const EDITABLE = [
+  'notificationTime', 'notificationsEnabled', 'dailyHighlightsCount', 'timezone', 'homeRows',
+  'autoAdvance', 'autoHighlight', 'defaultColor', 'readerFont', 'readerFontSize', 'readerLineHeight',
+  'readerLineWidth', 'ttsVoice', 'ttsRate',
+] as const;
+
+async function getOrCreate() {
+  return (await prisma.settings.findFirst()) ?? prisma.settings.create({ data: {} });
+}
+
 export async function GET() {
   try {
-    let settings = await prisma.settings.findFirst();
-
-    if (!settings) {
-      settings = await prisma.settings.create({
-        data: {
-          notificationTime: '09:00',
-          notificationsEnabled: true,
-          dailyHighlightsCount: 5,
-          timezone: 'UTC',
-        },
-      });
-    }
-
-    return NextResponse.json(settings);
+    return NextResponse.json(await getOrCreate());
   } catch (error) {
-    console.error('Error fetching settings:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch settings' },
-      { status: 500 }
-    );
+    console.error('Settings GET error:', error);
+    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
   }
 }
 
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { notificationTime, notificationsEnabled, dailyHighlightsCount, timezone } = body;
-
-    let settings = await prisma.settings.findFirst();
-
-    if (!settings) {
-      settings = await prisma.settings.create({
-        data: {
-          notificationTime: notificationTime || '09:00',
-          notificationsEnabled: notificationsEnabled ?? true,
-          dailyHighlightsCount: dailyHighlightsCount || 5,
-          timezone: timezone || 'UTC',
-        },
-      });
-    } else {
-      settings = await prisma.settings.update({
-        where: { id: settings.id },
-        data: {
-          ...(notificationTime && { notificationTime }),
-          ...(typeof notificationsEnabled === 'boolean' && { notificationsEnabled }),
-          ...(dailyHighlightsCount && { dailyHighlightsCount }),
-          ...(timezone && { timezone }),
-        },
-      });
-    }
-
-    return NextResponse.json(settings);
-  } catch (error) {
-    console.error('Error updating settings:', error);
-    return NextResponse.json(
-      { error: 'Failed to update settings' },
-      { status: 500 }
-    );
+async function update(request: NextRequest) {
+  const body = await request.json();
+  const data: Record<string, unknown> = {};
+  for (const key of EDITABLE) {
+    if (body[key] !== undefined) data[key] = key === 'homeRows' && typeof body[key] !== 'string' ? JSON.stringify(body[key]) : body[key];
   }
+  const current = await getOrCreate();
+  return prisma.settings.update({ where: { id: current.id }, data });
+}
+
+export async function PUT(request: NextRequest) {
+  try { return NextResponse.json(await update(request)); }
+  catch (error) { console.error('Settings PUT error:', error); return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 }); }
+}
+
+export async function PATCH(request: NextRequest) {
+  try { return NextResponse.json(await update(request)); }
+  catch (error) { console.error('Settings PATCH error:', error); return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 }); }
 }

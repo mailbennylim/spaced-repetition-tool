@@ -1,72 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { getNextReviewDate } from '@/lib/spaced-repetition';
 
-export async function POST(request: NextRequest) {
+/**
+ * Browse highlights (docs/ux-spec.md §3.7.4).
+ *  ?group=document       → one row per source document with counts
+ *  ?group=color          → counts per colour
+ *  ?documentId= | ?title= | ?color= | ?q=   → highlight list (newest first), ?limit=
+ */
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { title, text, url } = body;
+    const sp = request.nextUrl.searchParams;
+    const group = sp.get('group');
 
-    if (!title?.trim() || !text?.trim()) {
-      return NextResponse.json({ error: 'Title and body are required' }, { status: 400 });
+    if (group === 'color') {
+      const rows = await prisma.highlight.groupBy({ by: ['color'], _count: { _all: true } });
+      return NextResponse.json(rows.map(r => ({ color: r.color, count: r._count._all })));
     }
 
-    // Get or create the "Manual" source
-    let source = await prisma.source.findFirst({ where: { type: 'manual' } });
-    if (!source) {
-      source = await prisma.source.create({
-        data: { name: 'Manual', type: 'manual', isActive: true },
+    if (group === 'document') {
+      const rows = await prisma.highlight.findMany({
+        select: { documentId: true, title: true, author: true, createdAt: true, document: { select: { id: true, title: true, author: true, coverImage: true, imageUrl: true, type: true } } },
+        orderBy: { createdAt: 'desc' },
       });
+      const map = new Map<string, { key: string; documentId: string | null; title: string; author: string | null; image: string | null; type: string | null; count: number; last: string }>();
+      for (const r of rows) {
+        const key = r.documentId ?? `t:${r.title ?? 'Untitled'}`;
+        const cur = map.get(key);
+        if (cur) { cur.count++; continue; }
+        map.set(key, { key, documentId: r.documentId, title: r.document?.title ?? r.title ?? 'Untitled', author: r.document?.author ?? r.author, image: r.document?.coverImage ?? r.document?.imageUrl ?? null, type: r.document?.type ?? null, count: 1, last: r.createdAt.toISOString() });
+      }
+      return NextResponse.json([...map.values()]);
     }
 
-    // Use a timestamp-based externalId to guarantee uniqueness
-    const externalId = `manual_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
-    const highlight = await prisma.highlight.create({
-      data: {
-        sourceId: source.id,
-        externalId,
-        text: text.trim(),
-        title: title.trim(),
-        url: url?.trim() || undefined,
-        highlightedAt: new Date(),
-      },
-    });
-
-    await prisma.reviewSchedule.create({
-      data: {
-        highlightId: highlight.id,
-        scheduledFor: getNextReviewDate(1),
-        interval: 1,
-        easeFactor: 2.5,
-        repetitions: 0,
-      },
-    });
-
-    return NextResponse.json(highlight, { status: 201 });
-  } catch (error) {
-    console.error('Error creating highlight:', error);
-    return NextResponse.json({ error: 'Failed to create highlight' }, { status: 500 });
-  }
-}
-
-export async function GET() {
-  try {
+    const where: Prisma.HighlightWhereInput = {};
+    if (sp.get('documentId')) where.documentId = sp.get('documentId')!;
+    if (sp.get('title')) where.title = sp.get('title')!;
+    if (sp.get('color')) where.color = sp.get('color')!;
+    if (sp.get('q')) where.OR = [{ text: { contains: sp.get('q')! } }, { note: { contains: sp.get('q')! } }];
+    const limit = Math.min(500, Number(sp.get('limit')) || 100);
     const highlights = await prisma.highlight.findMany({
-      include: {
-        source: true,
-      },
-      orderBy: {
-        highlightedAt: 'desc',
-      },
+      where,
+      include: { document: { select: { id: true, title: true, coverImage: true, imageUrl: true, type: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
     });
-
     return NextResponse.json(highlights);
   } catch (error) {
-    console.error('Error fetching highlights:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch highlights' },
-      { status: 500 }
-    );
+    console.error('Highlights list error:', error);
+    return NextResponse.json({ error: 'Failed to fetch highlights' }, { status: 500 });
   }
 }

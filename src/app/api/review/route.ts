@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
           { repetitions: 0 },
         ],
       },
-      include: { highlight: { include: { source: true } } },
+      include: { highlight: { include: { source: true, document: { select: { id: true, coverImage: true, imageUrl: true, type: true, domain: true } } } } },
     });
 
     // Sort: most overdue first, ties broken by fewest repetitions
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
         highlightId: { in: recentHighlightIds.length > 0 ? recentHighlightIds : [''] },
         isCompleted: false,
       },
-      include: { highlight: { include: { source: true } } },
+      include: { highlight: { include: { source: true, document: { select: { id: true, coverImage: true, imageUrl: true, type: true, domain: true } } } } },
     });
 
     const slotB = pickRandom(slotBCandidates, 2);
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
           id: { notIn: [...allPickedIds] },
           isCompleted: false,
         },
-        include: { highlight: { include: { source: true } } },
+        include: { highlight: { include: { source: true, document: { select: { id: true, coverImage: true, imageUrl: true, type: true, domain: true } } } } },
         orderBy: [
           { repetitions: 'asc' },
           { scheduledFor: 'asc' },
